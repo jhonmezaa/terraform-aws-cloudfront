@@ -1,0 +1,4 @@
+region       = "us-east-1"
+account_name = "dev"
+project_name = "myapp"
+bucket_name  = "my-website-bucket"

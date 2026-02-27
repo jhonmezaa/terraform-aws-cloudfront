@@ -1,0 +1,8 @@
+region              = "us-east-1"
+account_name        = "prod"
+project_name        = "myapp"
+bucket_name         = "my-website-assets-bucket"
+alb_dns_name        = "my-alb-1234567890.us-east-1.elb.amazonaws.com"
+domain_name         = "www.example.com"
+acm_certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/abcd-1234-efgh-5678"
+logging_bucket      = "my-cloudfront-logs-bucket.s3.amazonaws.com"
