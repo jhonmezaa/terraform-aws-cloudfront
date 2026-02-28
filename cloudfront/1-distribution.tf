@@ -37,19 +37,17 @@ resource "aws_cloudfront_distribution" "this" {
       null
     )
 
-    origin_request_policy_id = coalesce(
+    origin_request_policy_id = try(coalesce(
       each.value.default_cache_behavior.origin_request_policy_id,
       each.value.default_cache_behavior.origin_request_policy_key != null ? try(aws_cloudfront_origin_request_policy.this[each.value.default_cache_behavior.origin_request_policy_key].id, null) : null,
       each.value.default_cache_behavior.origin_request_policy_name != null ? try(data.aws_cloudfront_origin_request_policy.this[each.value.default_cache_behavior.origin_request_policy_name].id, null) : null,
-      null
-    )
+    ), null)
 
-    response_headers_policy_id = coalesce(
+    response_headers_policy_id = try(coalesce(
       each.value.default_cache_behavior.response_headers_policy_id,
       each.value.default_cache_behavior.response_headers_policy_key != null ? try(aws_cloudfront_response_headers_policy.this[each.value.default_cache_behavior.response_headers_policy_key].id, null) : null,
       each.value.default_cache_behavior.response_headers_policy_name != null ? try(data.aws_cloudfront_response_headers_policy.this[each.value.default_cache_behavior.response_headers_policy_name].id, null) : null,
-      null
-    )
+    ), null)
 
     # Legacy TTL settings (only when not using cache policy)
     default_ttl = each.value.default_cache_behavior.default_ttl
@@ -135,19 +133,17 @@ resource "aws_cloudfront_distribution" "this" {
         null
       )
 
-      origin_request_policy_id = coalesce(
+      origin_request_policy_id = try(coalesce(
         ordered_cache_behavior.value.origin_request_policy_id,
         ordered_cache_behavior.value.origin_request_policy_key != null ? try(aws_cloudfront_origin_request_policy.this[ordered_cache_behavior.value.origin_request_policy_key].id, null) : null,
         ordered_cache_behavior.value.origin_request_policy_name != null ? try(data.aws_cloudfront_origin_request_policy.this[ordered_cache_behavior.value.origin_request_policy_name].id, null) : null,
-        null
-      )
+      ), null)
 
-      response_headers_policy_id = coalesce(
+      response_headers_policy_id = try(coalesce(
         ordered_cache_behavior.value.response_headers_policy_id,
         ordered_cache_behavior.value.response_headers_policy_key != null ? try(aws_cloudfront_response_headers_policy.this[ordered_cache_behavior.value.response_headers_policy_key].id, null) : null,
         ordered_cache_behavior.value.response_headers_policy_name != null ? try(data.aws_cloudfront_response_headers_policy.this[ordered_cache_behavior.value.response_headers_policy_name].id, null) : null,
-        null
-      )
+      ), null)
 
       # Legacy TTL settings
       default_ttl = ordered_cache_behavior.value.default_ttl
