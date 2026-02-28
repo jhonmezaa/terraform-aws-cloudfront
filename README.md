@@ -61,6 +61,7 @@ module "cloudfront" {
 ### Complete Example with Multiple Origins
 
 See [examples/complete](examples/complete/) for a full example with:
+
 - S3 + ALB origins
 - Custom cache, origin request, and response headers policies
 - CloudFront Functions
@@ -91,59 +92,59 @@ cloudfront/
 
 Resources follow the standard naming pattern:
 
-| Resource | Pattern |
-|----------|---------|
-| Distribution | `{region_prefix}-cf-{account_name}-{project_name}-{key}` |
-| OAC | `{region_prefix}-cf-oac-{account_name}-{project_name}-{key}` |
-| Cache Policy | `{region_prefix}-cf-cp-{account_name}-{project_name}-{key}` |
-| Origin Request Policy | `{region_prefix}-cf-orp-{account_name}-{project_name}-{key}` |
+| Resource                | Pattern                                                      |
+| ----------------------- | ------------------------------------------------------------ |
+| Distribution            | `{region_prefix}-cf-{account_name}-{project_name}-{key}`     |
+| OAC                     | `{region_prefix}-cf-oac-{account_name}-{project_name}-{key}` |
+| Cache Policy            | `{region_prefix}-cf-cp-{account_name}-{project_name}-{key}`  |
+| Origin Request Policy   | `{region_prefix}-cf-orp-{account_name}-{project_name}-{key}` |
 | Response Headers Policy | `{region_prefix}-cf-rhp-{account_name}-{project_name}-{key}` |
-| Function | `{region_prefix}_cf_fn_{account_name}_{project_name}_{key}` |
+| Function                | `{region_prefix}_cf_fn_{account_name}_{project_name}_{key}`  |
 
 ## Requirements
 
-| Name | Version |
-|------|---------|
-| terraform | ~> 1.0 |
-| aws | ~> 6.0 |
+| Name      | Version |
+| --------- | ------- |
+| terraform | ~> 1.0  |
+| aws       | ~> 6.0  |
 
 ## Inputs
 
-| Name | Description | Type | Default |
-|------|-------------|------|---------|
-| create | Whether to create CloudFront resources | bool | true |
-| account_name | Account name for resource naming | string | (required) |
-| project_name | Project name for resource naming | string | (required) |
-| region_prefix | Region prefix override | string | null (auto-derived) |
-| use_region_prefix | Include region prefix in names | bool | true |
-| tags | Additional tags for all resources | map(string) | {} |
-| distributions | Map of CloudFront distribution configurations | map(object) | {} |
-| origin_access_controls | Map of OAC configurations | map(object) | {} |
-| cache_policies | Map of cache policy configurations | map(object) | {} |
-| origin_request_policies | Map of origin request policy configurations | map(object) | {} |
-| response_headers_policies | Map of response headers policy configurations | map(object) | {} |
-| functions | Map of CloudFront Function configurations | map(object) | {} |
+| Name                      | Description                                   | Type        | Default             |
+| ------------------------- | --------------------------------------------- | ----------- | ------------------- |
+| create                    | Whether to create CloudFront resources        | bool        | true                |
+| account_name              | Account name for resource naming              | string      | (required)          |
+| project_name              | Project name for resource naming              | string      | (required)          |
+| region_prefix             | Region prefix override                        | string      | null (auto-derived) |
+| use_region_prefix         | Include region prefix in names                | bool        | true                |
+| tags                      | Additional tags for all resources             | map(string) | {}                  |
+| distributions             | Map of CloudFront distribution configurations | map(object) | {}                  |
+| origin_access_controls    | Map of OAC configurations                     | map(object) | {}                  |
+| cache_policies            | Map of cache policy configurations            | map(object) | {}                  |
+| origin_request_policies   | Map of origin request policy configurations   | map(object) | {}                  |
+| response_headers_policies | Map of response headers policy configurations | map(object) | {}                  |
+| functions                 | Map of CloudFront Function configurations     | map(object) | {}                  |
 
 ## Outputs
 
-| Name | Description |
-|------|-------------|
-| distributions | Map of all distribution attributes |
-| distribution_ids | Map of distribution keys to IDs |
-| distribution_arns | Map of distribution keys to ARNs |
-| distribution_domain_names | Map of distribution keys to domain names |
+| Name                         | Description                                   |
+| ---------------------------- | --------------------------------------------- |
+| distributions                | Map of all distribution attributes            |
+| distribution_ids             | Map of distribution keys to IDs               |
+| distribution_arns            | Map of distribution keys to ARNs              |
+| distribution_domain_names    | Map of distribution keys to domain names      |
 | distribution_hosted_zone_ids | Map of distribution keys to Route 53 zone IDs |
-| origin_access_controls | Map of OAC attributes |
-| origin_access_control_ids | Map of OAC keys to IDs |
-| cache_policies | Map of cache policy attributes |
-| cache_policy_ids | Map of cache policy keys to IDs |
-| origin_request_policies | Map of origin request policy attributes |
-| origin_request_policy_ids | Map of origin request policy keys to IDs |
-| response_headers_policies | Map of response headers policy attributes |
-| response_headers_policy_ids | Map of response headers policy keys to IDs |
-| functions | Map of function attributes |
-| function_arns | Map of function keys to ARNs |
-| monitoring_subscriptions | Map of monitoring subscription IDs |
+| origin_access_controls       | Map of OAC attributes                         |
+| origin_access_control_ids    | Map of OAC keys to IDs                        |
+| cache_policies               | Map of cache policy attributes                |
+| cache_policy_ids             | Map of cache policy keys to IDs               |
+| origin_request_policies      | Map of origin request policy attributes       |
+| origin_request_policy_ids    | Map of origin request policy keys to IDs      |
+| response_headers_policies    | Map of response headers policy attributes     |
+| response_headers_policy_ids  | Map of response headers policy keys to IDs    |
+| functions                    | Map of function attributes                    |
+| function_arns                | Map of function keys to ARNs                  |
+| monitoring_subscriptions     | Map of monitoring subscription IDs            |
 
 ## License
 
