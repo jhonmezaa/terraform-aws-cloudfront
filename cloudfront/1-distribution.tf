@@ -221,10 +221,10 @@ resource "aws_cloudfront_distribution" "this" {
       connection_attempts = origin.value.connection_attempts
       connection_timeout  = origin.value.connection_timeout
 
-      origin_access_control_id = coalesce(
+      origin_access_control_id = try(coalesce(
         origin.value.origin_access_control_id,
         origin.value.origin_access_control_key != null ? try(aws_cloudfront_origin_access_control.this[origin.value.origin_access_control_key].id, null) : null
-      )
+      ), null)
 
       dynamic "custom_origin_config" {
         for_each = origin.value.custom_origin_config != null ? [origin.value.custom_origin_config] : []
