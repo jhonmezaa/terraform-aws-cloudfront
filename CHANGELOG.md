@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.3] - 2026-03-01
+
+### Fixed
+
+- Wrap `coalesce()` with `try(..., null)` for `origin_access_control_id` in distribution origins
+- Fixes `coalesce(null, null)` error when using custom origins (ALB, API Gateway) without OAC
+
+## [1.0.2] - 2026-02-28
+
+### Changed
+
+- Documentation updates (CHANGELOG, README)
+
+## [1.0.1] - 2026-02-28
+
+### Fixed
+
+- Wrap `coalesce()` with `try(..., null)` for optional policy IDs in cache behaviors
+
 ## [1.0.0] - 2026-02-27
 
 ### Added
