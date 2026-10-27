@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.0.5] - 2026-10-27
+
+### Fixed
+
+- Replace deprecated `data.aws_region.current.id` with `data.aws_region.current.region` (AWS provider v6)
+
+### Changed
+
+- Normalize CHANGELOG headings to `## [vX.Y.Z] - date`
+
 ## [v1.0.4] - 2026-10-27
 
 ### Changed
@@ -11,26 +21,26 @@ All notable changes to this project will be documented in this file.
 - Examples (root modules) keep pessimistic constraints: `required_version` `~> 1.3` and AWS provider `~> 6.0`
 - Update README requirements table
 
-## [1.0.3] - 2026-03-01
+## [v1.0.3] - 2026-03-01
 
 ### Fixed
 
 - Wrap `coalesce()` with `try(..., null)` for `origin_access_control_id` in distribution origins
 - Fixes `coalesce(null, null)` error when using custom origins (ALB, API Gateway) without OAC
 
-## [1.0.2] - 2026-02-28
+## [v1.0.2] - 2026-02-28
 
 ### Changed
 
 - Documentation updates (CHANGELOG, README)
 
-## [1.0.1] - 2026-02-28
+## [v1.0.1] - 2026-02-28
 
 ### Fixed
 
 - Wrap `coalesce()` with `try(..., null)` for optional policy IDs in cache behaviors
 
-## [1.0.0] - 2026-02-27
+## [v1.0.0] - 2026-02-27
 
 ### Added
 
