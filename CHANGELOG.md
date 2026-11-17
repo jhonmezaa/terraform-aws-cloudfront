@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.2.0] - 2026-11-17
+
+### Added
+
+- Viewer mTLS: `viewer_mtls_config` on distributions (`mode`, `trust_store_config` with `trust_store_id` or `trust_store_key`, `advertise_trust_store_ca_names`, `ignore_certificate_expiry`)
+- `trust_stores` input and `aws_cloudfront_trust_store` resource (CA bundle in S3), with `trust_stores` / `trust_store_ids` outputs
+- `connection_functions` input and `aws_cloudfront_connection_function` resource, `connection_function_association` (`id` or `key`) on distributions, and `connection_functions` / `connection_function_arns` outputs
+- `anycast_ip_list_id` and `cache_tag_config` on distributions
+- Origins: `response_completion_timeout`, `custom_origin_config.ip_address_type`, `custom_origin_config.origin_mtls_config` and `vpc_origin_config.owner_account_id`
+- Validations (Spanish messages) for `viewer_mtls_config.mode`, `trust_store_config` without ID or key, `connection_function_association` without ID or key, and `ip_address_type`
+- `mtls` example
+
+### Changed
+
+- Minimum AWS provider raised from `>= 6.0` to `>= 6.51` (examples: `~> 6.51`); these arguments and resources do not exist in earlier provider versions
+
+### Upgrade notes
+
+- Requires `hashicorp/aws >= 6.51`. Run `terraform init -upgrade` if your lock file pins an older 6.x provider. Configurations with an upper bound below 6.51 must stay on v1.1.0.
+- No other action needed: every new input is optional and defaults to `null` / `{}`, so existing distributions plan no changes and no resource is recreated.
+
 ## [v1.1.0] - 2026-11-17
 
 ### Added
