@@ -1,6 +1,6 @@
 # terraform-aws-cloudfront
 
-Terraform module for AWS CloudFront distributions with origin access controls, VPC origins, cache policies, origin request policies, response headers policies, CloudFront Functions, and monitoring.
+Terraform module for AWS CloudFront distributions with origin access controls, VPC origins, cache policies, origin request policies, response headers policies, CloudFront Functions, viewer/origin mTLS (trust stores and connection functions), and monitoring.
 
 ## Features
 
@@ -8,6 +8,9 @@ Terraform module for AWS CloudFront distributions with origin access controls, V
 - **Origin Access Controls (OAC)** for S3, MediaStore, MediaPackage, and Lambda origins
 - **VPC origins** to serve private ALB, NLB or EC2 endpoints without exposing them to the internet
 - **gRPC** support per cache behavior (`grpc_config`)
+- **Viewer mTLS** (`viewer_mtls_config`) with module-managed **trust stores** (`trust_stores`) and **connection functions** (`connection_functions`)
+- **Origin mTLS** (`custom_origin_config.origin_mtls_config`), origin `ip_address_type` and `response_completion_timeout`
+- **Cache tags** (`cache_tag_config`), **Anycast static IPs** (`anycast_ip_list_id`) and cross-account VPC origins (`vpc_origin_config.owner_account_id`)
 - **Custom cache policies** with cookie, header, and query string configuration
 - **Origin request policies** for forwarding headers, cookies, and query strings to origins
 - **Response headers policies** with CORS, security headers, custom headers, and server timing
@@ -25,7 +28,7 @@ Terraform module for AWS CloudFront distributions with origin access controls, V
 
 ```hcl
 module "cloudfront" {
-  source = "github.com/jhonmezaa/terraform-aws-cloudfront//cloudfront?ref=v1.1.0"
+  source = "github.com/jhonmezaa/terraform-aws-cloudfront//cloudfront?ref=v1.2.0"
 
   account_name = "prod"
   project_name = "myapp"
@@ -76,6 +79,10 @@ See [examples/complete](examples/complete/) for a full example with:
 
 See [examples/vpc-origin](examples/vpc-origin/) for an internal ALB served through a CloudFront VPC origin (`vpc_origins` + `vpc_origin_config.vpc_origin_key`) with gRPC enabled on `/grpc/*`. The ALB security group must allow traffic from the `com.amazonaws.global.cloudfront.origin-facing` managed prefix list.
 
+### Viewer and Origin mTLS
+
+See [examples/mtls](examples/mtls/) for a distribution that requires viewer client certificates validated against a trust store (`trust_stores` + `viewer_mtls_config.trust_store_config.trust_store_key`), presents a client certificate to the origin (`origin_mtls_config`), extracts cache tags and, optionally, associates a connection function (`connection_functions` + `connection_function_association.key`). The connection function service quota is zero by default.
+
 ### Examples
 
 | Example | Description |
@@ -83,6 +90,7 @@ See [examples/vpc-origin](examples/vpc-origin/) for an internal ALB served throu
 | [s3-origin](examples/s3-origin/) | S3 bucket behind CloudFront with OAC and SPA error responses |
 | [complete](examples/complete/) | S3 + ALB origins, custom policies, functions, geo restriction, logging and monitoring |
 | [vpc-origin](examples/vpc-origin/) | Internal ALB through a CloudFront VPC origin with gRPC |
+| [mtls](examples/mtls/) | Viewer mTLS with a trust store, origin mTLS, cache tags and optional connection function |
 
 ## Module Structure
 
@@ -100,6 +108,7 @@ cloudfront/
   9-locals.tf                      - Local values
   10-variables.tf                  - Input variables
   11-outputs.tf                    - Output values
+  12-mtls.tf                       - Trust stores and connection functions (mTLS)
 ```
 
 ## Naming Convention
@@ -115,22 +124,24 @@ Resources follow the standard naming pattern:
 | Response Headers Policy | `{region_prefix}-cf-rhp-{account_name}-{project_name}-{key}` |
 | Function                | `{region_prefix}_cf_fn_{account_name}_{project_name}_{key}`  |
 | VPC Origin              | `{region_prefix}-cf-vpco-{account_name}-{project_name}-{key}` |
+| Trust Store             | `{region_prefix}-cf-ts-{account_name}-{project_name}-{key}`   |
+| Connection Function     | `{region_prefix}_cf_cfn_{account_name}_{project_name}_{key}`  |
 
 - Every resource except distributions accepts an optional `name` that overrides the generated name. Distributions accept `comment` (the description shown in the console); the `Name` tag always follows the pattern.
-- Names are truncated to the AWS limit: 64 characters for OAC, VPC origins and functions, 128 for policies and the default distribution comment.
-- Function names convert hyphens to underscores.
+- Names are truncated to the AWS limit: 64 characters for OAC, VPC origins, trust stores, functions and connection functions, 128 for policies and the default distribution comment.
+- Function and connection function names convert hyphens to underscores.
 - With `use_region_prefix = false` the `{region_prefix}-` part is omitted.
 
 ## Tags
 
-Taggable resources (distributions and VPC origins) receive `merge(tags_common, <resource tags>, { Name = <name>, ManagedBy = "Terraform" })`. The `tags` input is deprecated; it still works and is merged on top of `tags_common`. OAC, policies and functions do not support tags in AWS.
+Taggable resources (distributions, VPC origins, trust stores and connection functions) receive `merge(tags_common, <resource tags>, { Name = <name>, ManagedBy = "Terraform" })`. The `tags` input is deprecated; it still works and is merged on top of `tags_common`. OAC, policies and functions do not support tags in AWS.
 
 ## Requirements
 
 | Name      | Version |
 | --------- | ------- |
 | terraform | >= 1.3  |
-| aws       | >= 6.0  |
+| aws       | >= 6.51 |
 
 ## Inputs
 
@@ -150,6 +161,24 @@ Taggable resources (distributions and VPC origins) receive `merge(tags_common, <
 | response_headers_policies | Map of response headers policy configurations | map(object) | {}                  |
 | functions                 | Map of CloudFront Function configurations     | map(object) | {}                  |
 | vpc_origins               | Map of CloudFront VPC origin configurations   | map(object) | {}                  |
+| trust_stores              | Map of trust store configurations (mTLS)      | map(object) | {}                  |
+| connection_functions      | Map of connection function configurations     | map(object) | {}                  |
+
+### Distribution and origin attributes added in v1.2.0
+
+All of them are optional and default to `null` (not rendered), so existing distributions do not change.
+
+| Attribute                                                           | Description                                                                  |
+| ------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `distributions[*].anycast_ip_list_id`                               | Anycast static IP list ID                                                    |
+| `distributions[*].cache_tag_config.header_name`                     | Origin response header CloudFront reads cache tags from                      |
+| `distributions[*].connection_function_association.{id,key}`         | Connection function by ID or by key of `connection_functions`                |
+| `distributions[*].viewer_mtls_config.mode`                          | `required` or `optional`                                                     |
+| `distributions[*].viewer_mtls_config.trust_store_config`            | `trust_store_id` or `trust_store_key`, `advertise_trust_store_ca_names`, `ignore_certificate_expiry` |
+| `origin[*].response_completion_timeout`                             | Seconds CloudFront waits for the complete origin response                    |
+| `origin[*].custom_origin_config.ip_address_type`                    | `ipv4`, `ipv6` or `dualstack`                                                |
+| `origin[*].custom_origin_config.origin_mtls_config`                 | `client_certificate_arn` (ACM, us-east-1) presented to the origin            |
+| `origin[*].vpc_origin_config.owner_account_id`                      | Owner account of a VPC origin shared through AWS RAM                         |
 
 ## Outputs
 
@@ -173,6 +202,10 @@ Taggable resources (distributions and VPC origins) receive `merge(tags_common, <
 | monitoring_subscriptions     | Map of monitoring subscription IDs            |
 | vpc_origins                  | Map of VPC origin attributes (id, arn, etag)  |
 | vpc_origin_ids               | Map of VPC origin keys to IDs                 |
+| trust_stores                 | Map of trust store attributes                 |
+| trust_store_ids              | Map of trust store keys to IDs                |
+| connection_functions         | Map of connection function attributes         |
+| connection_function_arns     | Map of connection function keys to ARNs       |
 
 ## License
 
