@@ -64,9 +64,8 @@ module "cloudfront" {
     }
   }
 
-  tags = {
+  tags_common = {
     Environment = var.account_name
     Project     = var.project_name
-    ManagedBy   = "terraform"
   }
 }

@@ -5,7 +5,7 @@
 resource "aws_cloudfront_function" "this" {
   for_each = { for k, v in var.functions : k => v if var.create }
 
-  name    = replace("${local.name_prefix}cf_fn_${var.account_name}_${var.project_name}_${each.key}", "-", "_")
+  name    = local.function_names[each.key]
   runtime = each.value.runtime
   comment = each.value.comment
   code    = each.value.code

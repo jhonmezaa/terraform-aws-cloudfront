@@ -5,7 +5,7 @@
 resource "aws_cloudfront_distribution" "this" {
   for_each = { for k, v in var.distributions : k => v if var.create }
 
-  comment                         = each.value.comment != null ? each.value.comment : "${local.name_prefix}cf-${var.account_name}-${var.project_name}-${each.key}"
+  comment                         = each.value.comment != null ? each.value.comment : substr(local.distribution_names[each.key], 0, 128)
   enabled                         = each.value.enabled
   is_ipv6_enabled                 = each.value.is_ipv6_enabled
   http_version                    = each.value.http_version
@@ -30,12 +30,11 @@ resource "aws_cloudfront_distribution" "this" {
     compress               = each.value.default_cache_behavior.compress
 
     # Policy-based configuration
-    cache_policy_id = coalesce(
+    cache_policy_id = try(coalesce(
       each.value.default_cache_behavior.cache_policy_id,
       each.value.default_cache_behavior.cache_policy_key != null ? try(aws_cloudfront_cache_policy.this[each.value.default_cache_behavior.cache_policy_key].id, null) : null,
       each.value.default_cache_behavior.cache_policy_name != null ? try(data.aws_cloudfront_cache_policy.this[each.value.default_cache_behavior.cache_policy_name].id, null) : null,
-      null
-    )
+    ), null)
 
     origin_request_policy_id = try(coalesce(
       each.value.default_cache_behavior.origin_request_policy_id,
@@ -59,9 +58,8 @@ resource "aws_cloudfront_distribution" "this" {
       for_each = (
         each.value.default_cache_behavior.cache_policy_id == null &&
         each.value.default_cache_behavior.cache_policy_key == null &&
-        each.value.default_cache_behavior.cache_policy_name == null &&
-        each.value.default_cache_behavior.forwarded_values != null
-      ) ? [each.value.default_cache_behavior.forwarded_values] : []
+        each.value.default_cache_behavior.cache_policy_name == null
+      ) ? [each.value.default_cache_behavior.forwarded_values != null ? each.value.default_cache_behavior.forwarded_values : local.default_forwarded_values] : []
 
       content {
         query_string            = forwarded_values.value.query_string
@@ -69,7 +67,7 @@ resource "aws_cloudfront_distribution" "this" {
         headers                 = forwarded_values.value.headers
 
         dynamic "cookies" {
-          for_each = forwarded_values.value.cookies != null ? [forwarded_values.value.cookies] : []
+          for_each = [forwarded_values.value.cookies != null ? forwarded_values.value.cookies : local.default_forwarded_values.cookies]
 
           content {
             forward           = cookies.value.forward
@@ -89,6 +87,15 @@ resource "aws_cloudfront_distribution" "this" {
           function_association.value.function_arn,
           function_association.value.function_key != null ? try(aws_cloudfront_function.this[function_association.value.function_key].arn, null) : null
         )
+      }
+    }
+
+    # gRPC
+    dynamic "grpc_config" {
+      for_each = each.value.default_cache_behavior.grpc_config != null ? [each.value.default_cache_behavior.grpc_config] : []
+
+      content {
+        enabled = grpc_config.value.enabled
       }
     }
 
@@ -126,12 +133,11 @@ resource "aws_cloudfront_distribution" "this" {
       compress               = ordered_cache_behavior.value.compress
 
       # Policy-based configuration
-      cache_policy_id = coalesce(
+      cache_policy_id = try(coalesce(
         ordered_cache_behavior.value.cache_policy_id,
         ordered_cache_behavior.value.cache_policy_key != null ? try(aws_cloudfront_cache_policy.this[ordered_cache_behavior.value.cache_policy_key].id, null) : null,
         ordered_cache_behavior.value.cache_policy_name != null ? try(data.aws_cloudfront_cache_policy.this[ordered_cache_behavior.value.cache_policy_name].id, null) : null,
-        null
-      )
+      ), null)
 
       origin_request_policy_id = try(coalesce(
         ordered_cache_behavior.value.origin_request_policy_id,
@@ -155,9 +161,8 @@ resource "aws_cloudfront_distribution" "this" {
         for_each = (
           ordered_cache_behavior.value.cache_policy_id == null &&
           ordered_cache_behavior.value.cache_policy_key == null &&
-          ordered_cache_behavior.value.cache_policy_name == null &&
-          ordered_cache_behavior.value.forwarded_values != null
-        ) ? [ordered_cache_behavior.value.forwarded_values] : []
+          ordered_cache_behavior.value.cache_policy_name == null
+        ) ? [ordered_cache_behavior.value.forwarded_values != null ? ordered_cache_behavior.value.forwarded_values : local.default_forwarded_values] : []
 
         content {
           query_string            = forwarded_values.value.query_string
@@ -165,7 +170,7 @@ resource "aws_cloudfront_distribution" "this" {
           headers                 = forwarded_values.value.headers
 
           dynamic "cookies" {
-            for_each = forwarded_values.value.cookies != null ? [forwarded_values.value.cookies] : []
+            for_each = [forwarded_values.value.cookies != null ? forwarded_values.value.cookies : local.default_forwarded_values.cookies]
 
             content {
               forward           = cookies.value.forward
@@ -185,6 +190,15 @@ resource "aws_cloudfront_distribution" "this" {
             function_association.value.function_arn,
             function_association.value.function_key != null ? try(aws_cloudfront_function.this[function_association.value.function_key].arn, null) : null
           )
+        }
+      }
+
+      # gRPC
+      dynamic "grpc_config" {
+        for_each = ordered_cache_behavior.value.grpc_config != null ? [ordered_cache_behavior.value.grpc_config] : []
+
+        content {
+          enabled = grpc_config.value.enabled
         }
       }
 
@@ -244,6 +258,19 @@ resource "aws_cloudfront_distribution" "this" {
 
         content {
           origin_access_identity = s3_origin_config.value.origin_access_identity
+        }
+      }
+
+      dynamic "vpc_origin_config" {
+        for_each = origin.value.vpc_origin_config != null ? [origin.value.vpc_origin_config] : []
+
+        content {
+          vpc_origin_id = coalesce(
+            vpc_origin_config.value.vpc_origin_id,
+            vpc_origin_config.value.vpc_origin_key != null ? try(aws_cloudfront_vpc_origin.this[vpc_origin_config.value.vpc_origin_key].id, null) : null
+          )
+          origin_keepalive_timeout = vpc_origin_config.value.origin_keepalive_timeout
+          origin_read_timeout      = vpc_origin_config.value.origin_read_timeout
         }
       }
 
@@ -344,10 +371,11 @@ resource "aws_cloudfront_distribution" "this" {
   }
 
   tags = merge(
-    var.tags,
+    local.tags_common,
     each.value.tags,
     {
-      Name = "${local.name_prefix}cf-${var.account_name}-${var.project_name}-${each.key}"
+      Name      = local.distribution_names[each.key]
+      ManagedBy = "Terraform"
     }
   )
 
@@ -357,5 +385,6 @@ resource "aws_cloudfront_distribution" "this" {
     aws_cloudfront_cache_policy.this,
     aws_cloudfront_origin_request_policy.this,
     aws_cloudfront_response_headers_policy.this,
+    aws_cloudfront_vpc_origin.this,
   ]
 }

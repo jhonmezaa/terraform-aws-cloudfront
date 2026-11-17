@@ -50,9 +50,11 @@ module "cloudfront" {
     }
 
     api = {
-      comment     = "Cache policy for API responses"
+      comment = "Cache policy for API responses"
+      # AWS rejects headers/query strings in the cache key when max_ttl = 0,
+      # so caching stays on (max 1s) and the origin controls it via Cache-Control.
       default_ttl = 0
-      max_ttl     = 0
+      max_ttl     = 1
       min_ttl     = 0
 
       parameters_in_cache_key_and_forwarded_to_origin = {
@@ -293,9 +295,8 @@ module "cloudfront" {
     }
   }
 
-  tags = {
+  tags_common = {
     Environment = var.account_name
     Project     = var.project_name
-    ManagedBy   = "terraform"
   }
 }
