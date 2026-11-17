@@ -17,6 +17,34 @@ resource "aws_cloudfront_distribution" "this" {
   staging                         = each.value.staging
   continuous_deployment_policy_id = each.value.continuous_deployment_policy_id
   aliases                         = each.value.aliases
+  anycast_ip_list_id              = each.value.anycast_ip_list_id
+
+  # ===========================================================================
+  # Cache Tags (invalidation by tag)
+  # ===========================================================================
+
+  dynamic "cache_tag_config" {
+    for_each = each.value.cache_tag_config != null ? [each.value.cache_tag_config] : []
+
+    content {
+      header_name = cache_tag_config.value.header_name
+    }
+  }
+
+  # ===========================================================================
+  # Connection Function Association (viewer mTLS)
+  # ===========================================================================
+
+  dynamic "connection_function_association" {
+    for_each = each.value.connection_function_association != null ? [each.value.connection_function_association] : []
+
+    content {
+      id = coalesce(
+        connection_function_association.value.id,
+        connection_function_association.value.key != null ? try(aws_cloudfront_connection_function.this[connection_function_association.value.key].id, null) : null
+      )
+    }
+  }
 
   # ===========================================================================
   # Default Cache Behavior
@@ -235,6 +263,8 @@ resource "aws_cloudfront_distribution" "this" {
       connection_attempts = origin.value.connection_attempts
       connection_timeout  = origin.value.connection_timeout
 
+      response_completion_timeout = origin.value.response_completion_timeout
+
       origin_access_control_id = try(coalesce(
         origin.value.origin_access_control_id,
         origin.value.origin_access_control_key != null ? try(aws_cloudfront_origin_access_control.this[origin.value.origin_access_control_key].id, null) : null
@@ -250,6 +280,15 @@ resource "aws_cloudfront_distribution" "this" {
           origin_ssl_protocols     = custom_origin_config.value.origin_ssl_protocols
           origin_keepalive_timeout = custom_origin_config.value.origin_keepalive_timeout
           origin_read_timeout      = custom_origin_config.value.origin_read_timeout
+          ip_address_type          = custom_origin_config.value.ip_address_type
+
+          dynamic "origin_mtls_config" {
+            for_each = custom_origin_config.value.origin_mtls_config != null ? [custom_origin_config.value.origin_mtls_config] : []
+
+            content {
+              client_certificate_arn = origin_mtls_config.value.client_certificate_arn
+            }
+          }
         }
       }
 
@@ -271,6 +310,7 @@ resource "aws_cloudfront_distribution" "this" {
           )
           origin_keepalive_timeout = vpc_origin_config.value.origin_keepalive_timeout
           origin_read_timeout      = vpc_origin_config.value.origin_read_timeout
+          owner_account_id         = vpc_origin_config.value.owner_account_id
         }
       }
 
@@ -331,6 +371,31 @@ resource "aws_cloudfront_distribution" "this" {
   }
 
   # ===========================================================================
+  # Viewer mTLS
+  # ===========================================================================
+
+  dynamic "viewer_mtls_config" {
+    for_each = each.value.viewer_mtls_config != null ? [each.value.viewer_mtls_config] : []
+
+    content {
+      mode = viewer_mtls_config.value.mode
+
+      dynamic "trust_store_config" {
+        for_each = viewer_mtls_config.value.trust_store_config != null ? [viewer_mtls_config.value.trust_store_config] : []
+
+        content {
+          trust_store_id = coalesce(
+            trust_store_config.value.trust_store_id,
+            trust_store_config.value.trust_store_key != null ? try(aws_cloudfront_trust_store.this[trust_store_config.value.trust_store_key].id, null) : null
+          )
+          advertise_trust_store_ca_names = trust_store_config.value.advertise_trust_store_ca_names
+          ignore_certificate_expiry      = trust_store_config.value.ignore_certificate_expiry
+        }
+      }
+    }
+  }
+
+  # ===========================================================================
   # Geo Restriction
   # ===========================================================================
 
@@ -386,5 +451,7 @@ resource "aws_cloudfront_distribution" "this" {
     aws_cloudfront_origin_request_policy.this,
     aws_cloudfront_response_headers_policy.this,
     aws_cloudfront_vpc_origin.this,
+    aws_cloudfront_connection_function.this,
+    aws_cloudfront_trust_store.this,
   ]
 }
