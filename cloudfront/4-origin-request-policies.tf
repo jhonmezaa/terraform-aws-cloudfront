@@ -5,7 +5,7 @@
 resource "aws_cloudfront_origin_request_policy" "this" {
   for_each = { for k, v in var.origin_request_policies : k => v if var.create }
 
-  name = "${local.name_prefix}cf-orp-${var.account_name}-${var.project_name}-${each.key}"
+  name = local.origin_request_policy_names_map[each.key]
 
   comment = each.value.comment
 

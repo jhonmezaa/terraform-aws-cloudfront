@@ -18,12 +18,12 @@ variable "account_name" {
 
   validation {
     condition     = length(var.account_name) > 0 && length(var.account_name) <= 32
-    error_message = "account_name must be between 1 and 32 characters."
+    error_message = "account_name debe tener entre 1 y 32 caracteres."
   }
 
   validation {
     condition     = can(regex("^[a-z0-9-]+$", var.account_name))
-    error_message = "account_name can only contain lowercase letters, numbers, and hyphens."
+    error_message = "account_name solo puede contener letras minúsculas, números y guiones."
   }
 }
 
@@ -33,12 +33,12 @@ variable "project_name" {
 
   validation {
     condition     = length(var.project_name) > 0 && length(var.project_name) <= 32
-    error_message = "project_name must be between 1 and 32 characters."
+    error_message = "project_name debe tener entre 1 y 32 caracteres."
   }
 
   validation {
     condition     = can(regex("^[a-z0-9-]+$", var.project_name))
-    error_message = "project_name can only contain lowercase letters, numbers, and hyphens."
+    error_message = "project_name solo puede contener letras minúsculas, números y guiones."
   }
 }
 
@@ -54,8 +54,14 @@ variable "use_region_prefix" {
   default     = true
 }
 
+variable "tags_common" {
+  description = "Common tags applied to all taggable resources."
+  type        = map(string)
+  default     = {}
+}
+
 variable "tags" {
-  description = "Additional tags to apply to all resources."
+  description = "DEPRECATED: use tags_common. Kept for backward compatibility and merged on top of tags_common."
   type        = map(string)
   default     = {}
 }
@@ -124,6 +130,11 @@ variable "distributions" {
         function_key = optional(string)
       })), [])
 
+      # gRPC (requires allowed_methods with POST and http_version http2/http2and3)
+      grpc_config = optional(object({
+        enabled = bool
+      }))
+
       # Lambda@Edge associations
       lambda_function_association = optional(list(object({
         event_type   = string
@@ -181,6 +192,11 @@ variable "distributions" {
         function_key = optional(string)
       })), [])
 
+      # gRPC (requires allowed_methods with POST and http_version http2/http2and3)
+      grpc_config = optional(object({
+        enabled = bool
+      }))
+
       # Lambda@Edge associations
       lambda_function_association = optional(list(object({
         event_type   = string
@@ -226,6 +242,14 @@ variable "distributions" {
       # S3 origin configuration (legacy OAI)
       s3_origin_config = optional(object({
         origin_access_identity = optional(string)
+      }))
+
+      # VPC origin (private ALB/NLB/EC2). Use vpc_origin_id or vpc_origin_key (key of var.vpc_origins)
+      vpc_origin_config = optional(object({
+        vpc_origin_id            = optional(string)
+        vpc_origin_key           = optional(string)
+        origin_keepalive_timeout = optional(number)
+        origin_read_timeout      = optional(number)
       }))
 
       # Custom headers sent to origin
@@ -289,6 +313,7 @@ variable "distributions" {
 variable "origin_access_controls" {
   description = "Map of CloudFront Origin Access Control configurations."
   type = map(object({
+    name                              = optional(string)
     description                       = optional(string)
     origin_access_control_origin_type = optional(string, "s3")
     signing_behavior                  = optional(string, "always")
@@ -304,6 +329,7 @@ variable "origin_access_controls" {
 variable "cache_policies" {
   description = "Map of CloudFront cache policy configurations."
   type = map(object({
+    name        = optional(string)
     comment     = optional(string)
     default_ttl = optional(number, 86400)
     max_ttl     = optional(number, 31536000)
@@ -336,6 +362,7 @@ variable "cache_policies" {
 variable "origin_request_policies" {
   description = "Map of CloudFront origin request policy configurations."
   type = map(object({
+    name    = optional(string)
     comment = optional(string)
 
     cookies_config = object({
@@ -361,6 +388,7 @@ variable "origin_request_policies" {
 variable "response_headers_policies" {
   description = "Map of CloudFront response headers policy configurations."
   type = map(object({
+    name    = optional(string)
     comment = optional(string)
 
     cors_config = optional(object({
@@ -428,6 +456,7 @@ variable "response_headers_policies" {
 variable "functions" {
   description = "Map of CloudFront Function configurations."
   type = map(object({
+    name    = optional(string)
     comment = optional(string)
     runtime = optional(string, "cloudfront-js-2.0")
     code    = string
@@ -436,4 +465,36 @@ variable "functions" {
     key_value_store_associations = optional(list(string))
   }))
   default = {}
+}
+
+# =============================================================================
+# VPC Origins
+# =============================================================================
+
+variable "vpc_origins" {
+  description = "Map of CloudFront VPC origin configurations (private ALB, NLB or EC2 endpoints). Reference them from an origin with vpc_origin_config.vpc_origin_key."
+  type = map(object({
+    name                   = optional(string)
+    arn                    = string
+    http_port              = optional(number, 80)
+    https_port             = optional(number, 443)
+    origin_protocol_policy = optional(string, "https-only")
+    origin_ssl_protocols   = optional(list(string), ["TLSv1.2"])
+
+    timeouts = optional(object({
+      create = optional(string)
+      update = optional(string)
+      delete = optional(string)
+    }))
+
+    tags = optional(map(string), {})
+  }))
+  default = {}
+
+  validation {
+    condition = alltrue([
+      for v in var.vpc_origins : contains(["http-only", "https-only", "match-viewer"], v.origin_protocol_policy)
+    ])
+    error_message = "origin_protocol_policy de vpc_origins debe ser http-only, https-only o match-viewer."
+  }
 }

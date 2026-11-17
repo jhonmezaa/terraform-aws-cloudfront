@@ -146,3 +146,23 @@ output "monitoring_subscriptions" {
   description = "Map of monitoring subscription IDs."
   value       = { for k, v in aws_cloudfront_monitoring_subscription.this : k => v.id }
 }
+
+# =============================================================================
+# VPC Origin Outputs
+# =============================================================================
+
+output "vpc_origins" {
+  description = "Map of VPC origin attributes."
+  value = {
+    for k, v in aws_cloudfront_vpc_origin.this : k => {
+      id   = v.id
+      arn  = v.arn
+      etag = v.etag
+    }
+  }
+}
+
+output "vpc_origin_ids" {
+  description = "Map of VPC origin keys to their IDs."
+  value       = { for k, v in aws_cloudfront_vpc_origin.this : k => v.id }
+}

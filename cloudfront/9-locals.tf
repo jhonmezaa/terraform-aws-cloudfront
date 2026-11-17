@@ -52,6 +52,55 @@ locals {
   # Name prefix: includes region prefix with trailing dash, or empty string
   name_prefix = var.use_region_prefix ? "${local.region_prefix}-" : ""
 
+  # Common tags (`tags` is kept as a deprecated alias of `tags_common`)
+  tags_common = merge(var.tags_common, var.tags)
+
+  # =============================================================================
+  # Resource Names
+  # =============================================================================
+  # Each name can be overridden with an explicit `name` and is truncated to the
+  # AWS limit (functions, OAC and VPC origins: 64; policies: 128).
+
+  distribution_names = {
+    for k, v in var.distributions : k => "${local.name_prefix}cf-${var.account_name}-${var.project_name}-${k}"
+  }
+
+  origin_access_control_names = {
+    for k, v in var.origin_access_controls : k => substr(coalesce(v.name, "${local.name_prefix}cf-oac-${var.account_name}-${var.project_name}-${k}"), 0, 64)
+  }
+
+  vpc_origin_names = {
+    for k, v in var.vpc_origins : k => substr(coalesce(v.name, "${local.name_prefix}cf-vpco-${var.account_name}-${var.project_name}-${k}"), 0, 64)
+  }
+
+  cache_policy_names_map = {
+    for k, v in var.cache_policies : k => substr(coalesce(v.name, "${local.name_prefix}cf-cp-${var.account_name}-${var.project_name}-${k}"), 0, 128)
+  }
+
+  origin_request_policy_names_map = {
+    for k, v in var.origin_request_policies : k => substr(coalesce(v.name, "${local.name_prefix}cf-orp-${var.account_name}-${var.project_name}-${k}"), 0, 128)
+  }
+
+  response_headers_policy_names_map = {
+    for k, v in var.response_headers_policies : k => substr(coalesce(v.name, "${local.name_prefix}cf-rhp-${var.account_name}-${var.project_name}-${k}"), 0, 128)
+  }
+
+  # CloudFront Function names only allow [a-zA-Z0-9-_]; hyphens are converted to underscores
+  function_names = {
+    for k, v in var.functions : k => substr(coalesce(v.name, replace("${local.name_prefix}cf_fn_${var.account_name}_${var.project_name}_${k}", "-", "_")), 0, 64)
+  }
+
+  # Legacy forwarded values used when a behavior has no cache policy and no `forwarded_values`
+  default_forwarded_values = {
+    query_string            = false
+    query_string_cache_keys = null
+    headers                 = null
+    cookies = {
+      forward           = "none"
+      whitelisted_names = null
+    }
+  }
+
   # =============================================================================
   # Cache Behavior Policy Resolution
   # =============================================================================

@@ -5,7 +5,7 @@
 resource "aws_cloudfront_response_headers_policy" "this" {
   for_each = { for k, v in var.response_headers_policies : k => v if var.create }
 
-  name = "${local.name_prefix}cf-rhp-${var.account_name}-${var.project_name}-${each.key}"
+  name = local.response_headers_policy_names_map[each.key]
 
   comment = each.value.comment
 

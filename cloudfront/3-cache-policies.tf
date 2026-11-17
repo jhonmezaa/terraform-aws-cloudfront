@@ -5,7 +5,7 @@
 resource "aws_cloudfront_cache_policy" "this" {
   for_each = { for k, v in var.cache_policies : k => v if var.create }
 
-  name = "${local.name_prefix}cf-cp-${var.account_name}-${var.project_name}-${each.key}"
+  name = local.cache_policy_names_map[each.key]
 
   comment     = each.value.comment
   default_ttl = each.value.default_ttl
