@@ -90,6 +90,15 @@ locals {
     for k, v in var.functions : k => substr(coalesce(v.name, replace("${local.name_prefix}cf_fn_${var.account_name}_${var.project_name}_${k}", "-", "_")), 0, 64)
   }
 
+  # Connection functions follow the same character rules as CloudFront Functions
+  connection_function_names = {
+    for k, v in var.connection_functions : k => substr(coalesce(v.name, replace("${local.name_prefix}cf_cfn_${var.account_name}_${var.project_name}_${k}", "-", "_")), 0, 64)
+  }
+
+  trust_store_names = {
+    for k, v in var.trust_stores : k => substr(coalesce(v.name, "${local.name_prefix}cf-ts-${var.account_name}-${var.project_name}-${k}"), 0, 64)
+  }
+
   # Legacy forwarded values used when a behavior has no cache policy and no `forwarded_values`
   default_forwarded_values = {
     query_string            = false

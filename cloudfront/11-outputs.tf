@@ -166,3 +166,48 @@ output "vpc_origin_ids" {
   description = "Map of VPC origin keys to their IDs."
   value       = { for k, v in aws_cloudfront_vpc_origin.this : k => v.id }
 }
+
+# =============================================================================
+# Trust Store Outputs
+# =============================================================================
+
+output "trust_stores" {
+  description = "Map of CloudFront trust store attributes."
+  value = {
+    for k, v in aws_cloudfront_trust_store.this : k => {
+      id                        = v.id
+      arn                       = v.arn
+      etag                      = v.etag
+      name                      = v.name
+      number_of_ca_certificates = v.number_of_ca_certificates
+    }
+  }
+}
+
+output "trust_store_ids" {
+  description = "Map of trust store keys to their IDs."
+  value       = { for k, v in aws_cloudfront_trust_store.this : k => v.id }
+}
+
+# =============================================================================
+# Connection Function Outputs
+# =============================================================================
+
+output "connection_functions" {
+  description = "Map of CloudFront connection function attributes."
+  value = {
+    for k, v in aws_cloudfront_connection_function.this : k => {
+      id              = v.id
+      arn             = v.connection_function_arn
+      etag            = v.etag
+      live_stage_etag = v.live_stage_etag
+      name            = v.name
+      status          = v.status
+    }
+  }
+}
+
+output "connection_function_arns" {
+  description = "Map of connection function keys to their ARNs."
+  value       = { for k, v in aws_cloudfront_connection_function.this : k => v.connection_function_arn }
+}

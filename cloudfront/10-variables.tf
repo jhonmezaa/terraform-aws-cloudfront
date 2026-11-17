@@ -88,6 +88,31 @@ variable "distributions" {
 
     aliases = optional(list(string), [])
 
+    # Anycast static IP list associated with the distribution
+    anycast_ip_list_id = optional(string)
+
+    # Cache tags: response header CloudFront reads tags from (enables invalidation by tag)
+    cache_tag_config = optional(object({
+      header_name = string
+    }))
+
+    # Connection function run during the viewer TLS handshake. Use id or key (key of var.connection_functions)
+    connection_function_association = optional(object({
+      id  = optional(string)
+      key = optional(string)
+    }))
+
+    # Viewer mTLS. Use trust_store_id or trust_store_key (key of var.trust_stores)
+    viewer_mtls_config = optional(object({
+      mode = optional(string)
+      trust_store_config = optional(object({
+        trust_store_id                 = optional(string)
+        trust_store_key                = optional(string)
+        advertise_trust_store_ca_names = optional(bool)
+        ignore_certificate_expiry      = optional(bool)
+      }))
+    }))
+
     # Default cache behavior
     default_cache_behavior = object({
       target_origin_id       = string
@@ -219,6 +244,9 @@ variable "distributions" {
       connection_attempts = optional(number)
       connection_timeout  = optional(number)
 
+      # Maximum time (seconds) CloudFront waits for the complete origin response
+      response_completion_timeout = optional(number)
+
       # Origin Access Control
       origin_access_control_id  = optional(string)
       origin_access_control_key = optional(string)
@@ -237,6 +265,12 @@ variable "distributions" {
         origin_ssl_protocols     = optional(list(string), ["TLSv1.2"])
         origin_keepalive_timeout = optional(number)
         origin_read_timeout      = optional(number)
+        # ipv4, ipv6 or dualstack
+        ip_address_type = optional(string)
+        # Client certificate (ACM, us-east-1) CloudFront presents to the origin
+        origin_mtls_config = optional(object({
+          client_certificate_arn = string
+        }))
       }))
 
       # S3 origin configuration (legacy OAI)
@@ -250,6 +284,8 @@ variable "distributions" {
         vpc_origin_key           = optional(string)
         origin_keepalive_timeout = optional(number)
         origin_read_timeout      = optional(number)
+        # Account that owns the VPC origin when it is shared through AWS RAM
+        owner_account_id = optional(string)
       }))
 
       # Custom headers sent to origin
@@ -304,6 +340,36 @@ variable "distributions" {
     tags = optional(map(string), {})
   }))
   default = {}
+
+  validation {
+    condition = alltrue([
+      for d in var.distributions : try(d.viewer_mtls_config.mode == null || contains(["required", "optional"], d.viewer_mtls_config.mode), true)
+    ])
+    error_message = "viewer_mtls_config.mode debe ser required u optional."
+  }
+
+  validation {
+    condition = alltrue([
+      for d in var.distributions : try(d.viewer_mtls_config.trust_store_config.trust_store_id != null || d.viewer_mtls_config.trust_store_config.trust_store_key != null, true)
+    ])
+    error_message = "viewer_mtls_config.trust_store_config necesita trust_store_id o trust_store_key."
+  }
+
+  validation {
+    condition = alltrue([
+      for d in var.distributions : d.connection_function_association == null || try(d.connection_function_association.id != null || d.connection_function_association.key != null, false)
+    ])
+    error_message = "connection_function_association necesita id o key."
+  }
+
+  validation {
+    condition = alltrue(flatten([
+      for d in var.distributions : [
+        for o in d.origin : try(o.custom_origin_config.ip_address_type == null || contains(["ipv4", "ipv6", "dualstack"], o.custom_origin_config.ip_address_type), true)
+      ]
+    ]))
+    error_message = "custom_origin_config.ip_address_type debe ser ipv4, ipv6 o dualstack."
+  }
 }
 
 # =============================================================================
@@ -497,4 +563,51 @@ variable "vpc_origins" {
     ])
     error_message = "origin_protocol_policy de vpc_origins debe ser http-only, https-only o match-viewer."
   }
+}
+
+# =============================================================================
+# Trust Stores (viewer mTLS)
+# =============================================================================
+
+variable "trust_stores" {
+  description = "Map of CloudFront trust store configurations (CA bundle in S3 used to validate viewer client certificates). Reference them from a distribution with viewer_mtls_config.trust_store_config.trust_store_key."
+  type = map(object({
+    name = optional(string)
+
+    ca_certificates_bundle_s3_location = object({
+      bucket  = string
+      key     = string
+      region  = string
+      version = optional(string)
+    })
+
+    timeouts = optional(object({
+      create = optional(string)
+      update = optional(string)
+      delete = optional(string)
+    }))
+
+    tags = optional(map(string), {})
+  }))
+  default = {}
+}
+
+# =============================================================================
+# Connection Functions
+# =============================================================================
+
+variable "connection_functions" {
+  description = "Map of CloudFront connection function configurations (run during the viewer TLS handshake, used with viewer mTLS). Reference them from a distribution with connection_function_association.key. The default service quota is zero."
+  type = map(object({
+    name    = optional(string)
+    comment = optional(string)
+    runtime = optional(string, "cloudfront-js-2.0")
+    code    = string
+    publish = optional(bool, true)
+
+    key_value_store_arns = optional(list(string), [])
+
+    tags = optional(map(string), {})
+  }))
+  default = {}
 }
