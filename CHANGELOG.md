@@ -2,6 +2,39 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.1.0] - 2026-11-17
+
+### Added
+
+- `vpc_origins` input and `aws_cloudfront_vpc_origin` resource for private ALB, NLB or EC2 origins, plus `vpc_origin_config` (`vpc_origin_id` or `vpc_origin_key`) on distribution origins and `vpc_origins` / `vpc_origin_ids` outputs
+- `grpc_config` on default and ordered cache behaviors
+- Optional `name` override for origin access controls, cache policies, origin request policies, response headers policies and functions
+- `tags_common` input (project convention); tags now also include `ManagedBy = "Terraform"`
+- `vpc-origin` example and a README for every example
+
+### Fixed
+
+- `cache_policy_id` used `coalesce()` without `try()`, so any behavior without a cache policy (legacy `forwarded_values` mode) failed with "no non-null, non-empty-string arguments"
+- Behaviors without a cache policy and without `forwarded_values` now get a default `forwarded_values` (no query string, cookies `none`), and `cookies` defaults to `forward = "none"`; the AWS API requires both
+- Generated names are truncated to the AWS limits (64 for OAC, VPC origins and functions, 128 for policies and the default distribution comment)
+- `complete` example: the `api` cache policy used `max_ttl = 0` together with headers and query strings in the cache key, which AWS rejects
+- Validation error messages for `account_name` and `project_name` are now in Spanish, per the project convention
+
+### Changed
+
+- Removed the unused `aws_caller_identity` and `aws_partition` data sources
+- Examples use `tags_common` and `examples/<name>/versions.tf`
+- README: `source` ref, inputs/outputs, naming and tags sections updated
+
+### Deprecated
+
+- `tags`: use `tags_common`. It is still merged on top of `tags_common`, so existing configurations keep working
+
+### Upgrade notes
+
+- No resource is recreated. Distributions and VPC origins get the new `ManagedBy = "Terraform"` tag (in-place update). If you set `ManagedBy` yourself in `tags`, the module value `Terraform` now takes precedence.
+- Existing names do not change: truncation only affects names that exceeded the AWS limit and therefore could not be created before.
+
 ## [v1.0.5] - 2026-10-27
 
 ### Fixed
